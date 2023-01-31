@@ -1,16 +1,16 @@
-export async function generateImageDallE2(token, text, size, quantity) {
+export async function generateResponseChatGPT(token, text, temperature, max_tokens) {
   try {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetch('https://api.openai.com/v1/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        model: 'image-alpha-001',
+        model: 'text-davinci-003',
         prompt: text,
-        num_images: parseInt(quantity),
-        size: `${size}`,
+        temperature: parseInt(temperature),
+        max_tokens: parseInt(max_tokens),
       }),
     });
     const json = await response.json();

@@ -1,50 +1,54 @@
 import Head from 'next/head';
-import { Text, Card, Container, Row, Input, Button, Loading, Radio } from '@nextui-org/react';
+import { Text, Card, Container, Row, Input, Button, Loading, Radio, Navbar, Avatar, Dropdown } from '@nextui-org/react';
 import { useState } from 'react';
-import { generateImageDallE2 } from '@/utils/generateImagesDallE2';
+import { generateResponseChatGPT } from '@/utils/generateResponseChatGPT';
+import Notiflix from 'notiflix';
 
 export default function Home() {
   const [apiKey, setApiKey] = useState('');
   const [text, setText] = useState('');
-  const [size, setSize] = useState('256x256');
-  const [quantity, setQuantity] = useState('');
+  const [temperature, setTemperature] = useState(0.3);
+  const [maxTokens, setMaxTokens] = useState(500);
 
-  const [images, setImages] = useState([]);
+  const [messages, setMessages] = useState([]);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   function validateFields() {
     if (!apiKey) return 'Invalid API Key';
     if (!text) return 'Invalid text';
-    if (!size) return 'Invalid size';
-    if (!quantity) return 'Invalid quantity';
+    if (!temperature) return 'Invalid temperature';
+    if (!maxTokens) return 'Invalid max tokens';
     return null;
   }
 
-  const copyToClipboard = (url) => {
-    const el = document.createElement('textarea');
-    el.value = url;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-  };
+  function formatTextToHtml(text) {
+    return text
+      .split('\n')
+      .map((line) => `<p>${line}</p>`)
+      .join('');
+  }
 
-  async function generateImages() {
-    setError('');
+  async function generateResponse() {
     if (loading) return;
     if (validateFields()) {
-      setError(validateFields);
+      Notiflix.Notify.failure(validateFields(), {
+        zindex: 9999,
+        showOnlyTheLastOne: true,
+      });
       return;
     }
     setLoading(true);
-    const response = await generateImageDallE2(apiKey, text, size, quantity);
+    const response = await generateResponseChatGPT(apiKey, text, temperature, maxTokens);
     console.log('response: ', response);
     if (response.error) {
-      setError(response.error.message);
+      Notiflix.Notify.failure(response.error.message, {
+        zindex: 9999,
+        showOnlyTheLastOne: true,
+      });
     } else {
-      setImages([...images, ...response.data]);
+      setText('');
+      setMessages([...messages, { you: text, bot: response.choices[0].text }]);
     }
     setLoading(false);
   }
@@ -57,104 +61,44 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.svg" />
       </Head>
-      <Container css={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', gap: '30px', padding: '50px' }}>
-        <Text
-          size={40}
-          css={{
-            textGradient: '45deg, #17C964 20%, #108944 70%',
-            textAlign: 'center',
-          }}
-          weight="bold"
-        >
-          CHAT GPT
-        </Text>
-        <Container css={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-          <Input
-            bordered
-            labelPlaceholder="Openai API Key"
-            color="success"
-            onChange={(e) => {
-              setApiKey(e.target.value);
-              setError('');
-            }}
-            status="success"
-          />
-          <Input
-            bordered
-            labelPlaceholder="Text"
-            color="success"
-            onChange={(e) => {
-              setText(e.target.value);
-              setError('');
-            }}
-            status="success"
-            css={{ marginTop: '40px' }}
-          />
-          <Radio.Group label="Select size" value={size} onChange={setSize} color="success" css={{ marginTop: '20px' }}>
-            <Radio size="xs" value="256x256">
-              256x256
-            </Radio>
-            <Radio size="xs" value="512x512">
-              512x512
-            </Radio>
-            <Radio size="xs" value="1024x1024">
-              1024x1024
-            </Radio>
-          </Radio.Group>
-          <Input
-            bordered
-            type="number"
-            labelPlaceholder="Quantity"
-            color="success"
-            min={1}
-            onChange={(e) => {
-              setQuantity(e.target.value);
-              setError('');
-            }}
-            status="success"
-            css={{ marginTop: '40px' }}
-          />
-        </Container>
-        <Container css={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
-          <Button color="success" onClick={generateImages} shadow>
-            {!loading && 'Send'}
-            {loading && <Loading type="points" color={'white'} />}
-          </Button>
-          {error && (
-            <Text color={'error'} weight={'bold'} css={{ textAlign: 'center' }}>
-              {error}
-            </Text>
-          )}
-        </Container>
-        {images.length > 0 && (
-          <>
-            <Button
-              color="success"
-              onClick={() => {
-                setImages([]);
-              }}
-              bordered
-            >
-              Delete all
-            </Button>
-            <Container css={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: '20px', maxWidth: 'fit-content' }}>
-              {images.map((image) => {
+      <Container css={{ width: '100vw', background: '#f8fffb', padding: '0px', margin: '0px', maxWidth: '100vw' }}>
+        <Container css={{ minHeight: '100vh', display: 'flex', flexDirection: 'col', justifyContent: 'center', alignItems: 'center', alignContent: 'space-between' }}>
+          <Navbar isBordered variant="sticky" css={{ '& > *': { height: 'fit-content' }, background: 'white' }}>
+            <Container css={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: '10px' }}>
+              <Text h4 color="success">
+                ChatGPT
+              </Text>
+              <Container css={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: '10px', paddingTop: '0px', gap: '20px' }}>
+                <Input underlined labelLeft="Openai API Key" status="success" onChange={(e) => setApiKey(e.target.value)} />
+                <Input underlined labelLeft="Temp." status="success" min={0} type="number" initialValue={0.3} onChange={(e) => setTemperature(e.target.value)} />
+                <Input underlined labelLeft="Max Tokens" status="success" min={1} type="number" initialValue={500} onChange={(e) => setMaxTokens(e.target.value)} />
+              </Container>
+            </Container>
+          </Navbar>
+          <Container css={{ height: 'calc(100vh - 180px)', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+            {messages &&
+              messages.map((message) => {
                 return (
                   <>
-                    <Container css={{ maxWidth: 'fit-content', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
-                      <a href={image.url} target="_blank" rel="noreferrer">
-                        <img key={image.url} src={image.url}></img>
-                      </a>
-                      <Button color="success" onClick={() => copyToClipboard(image.url)}>
-                        Copy URL
-                      </Button>
-                    </Container>
+                    <hr />
+                    <p>
+                      <strong>You:</strong> {message.you}
+                    </p>
+                    <p style={{ display: 'flex' }}>
+                      <strong>Bot:</strong>
+                      <span style={{ display: 'inline-block', marginLeft: '4px' }} dangerouslySetInnerHTML={{ __html: formatTextToHtml(message.bot) }} />
+                    </p>
                   </>
                 );
               })}
-            </Container>
-          </>
-        )}
+          </Container>
+          <Container css={{ paddingBottom: '20px', position: 'sticky', bottom: '0', display: 'flex', gap: '10px' }}>
+            <Input disabled={loading ? true : false} clearable placeholder="Type your message..." status="success" css={{ width: 'calc(100% - 130px)' }} value={text} onChange={(e) => setText(e.target.value)} />
+            <Button shadow color="success" css={{ minWidth: '120px' }} onClick={() => generateResponse()}>
+              {loading ? <Loading type="points" color={'white'} /> : 'Send'}
+            </Button>
+          </Container>
+        </Container>
       </Container>
     </>
   );
